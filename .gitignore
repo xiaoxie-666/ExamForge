@@ -1,0 +1,66 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+*.pem
+*.key
+*.p12
+*.jks
+
+# Java / Maven
+**/target/
+**/build/
+*.class
+*.jar
+*.war
+*.log
+**/logs/
+
+# Node / Vue
+**/node_modules/
+**/dist/
+**/.vite/
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local data, backups, generated runtime files
+backups/
+mysql_data/
+redis_data/
+rocketmq_data/
+performance-test-exam-id.txt
+ExamForge_JMeter_Performance/config/exam-id.txt
+ExamForge_JMeter_Performance/jmeter/users.csv
+ExamForge_JMeter_Performance/results/
+**/*.jtl
+**/jmeter.log
+resource-monitor-*.csv
+docker-compose.outbox-recovery-test-*.yml
+docker-compose.broker-outage-test-*.yml
+
+# Temporary files and archives
+*.tmp
+*.bak
+*.swp
+*.zip
+# Python cache and test tooling
+**/__pycache__/
+*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# Local-only Docker configuration (keep locally; do not publish)
+/docker-compose.isolated.yml
+/docker-compose.*.local.yml
+
+# Frontend package manager cache
+frontend/.npm/
+/LOCAL-DOCKER-REUSE.md

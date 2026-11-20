@@ -1,0 +1,6 @@
+# Generated load-test inputs and artifacts
+jmeter/users.csv
+jmeter.log
+results/
+*.jtl
+config/exam-id.txt

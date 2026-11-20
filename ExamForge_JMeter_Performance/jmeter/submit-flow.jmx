@@ -1,0 +1,479 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="ExamForge - Full Exam Submit Flow (All Questions)" enabled="true">
+      <stringProp name="TestPlan.comments">Full-flow test with 1000-user answer barrier, randomized per-user first-answer pacing, per-question think time, grouped start/submit, and fail-fast behavior.</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments">
+        <collectionProp name="Arguments.arguments" />
+      </elementProp>
+    </TestPlan>
+    <hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Load-test candidates" enabled="true">
+        <stringProp name="ThreadGroup.num_threads">${__P(threads,1000)}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${__P(ramp,10)}</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="Dedicated candidate accounts" enabled="true">
+          <stringProp name="filename">${__P(dataFile,jmeter/users.csv)}</stringProp>
+          <stringProp name="fileEncoding">UTF-8</stringProp>
+          <stringProp name="variableNames">username,password,examId</stringProp>
+          <stringProp name="delimiter">,</stringProp>
+          <boolProp name="quotedData">false</boolProp>
+          <boolProp name="recycle">false</boolProp>
+          <boolProp name="stopThread">true</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+        </CSVDataSet>
+        <hashTree />
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="01 Login" enabled="true">
+          <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+          <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+          <stringProp name="HTTPSampler.path">/api/auth/login</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+          <stringProp name="HTTPSampler.connect_timeout">${__P(connectTimeout,10000)}</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">${__P(responseTimeout,60000)}</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="body" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"username":"${username}","password":"${password}"}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="JSON request header" enabled="true">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="Content-Type" elementType="Header">
+                <stringProp name="Header.name">Content-Type</stringProp>
+                <stringProp name="Header.value">application/json</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree />
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert login success" enabled="true">
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="filename" />
+            <stringProp name="parameters" />
+            <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+  if (prev.getResponseCode() != '200') {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Login HTTP ' + prev.getResponseCode())
+  } else if (root.code != 0) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Login API error: ' + root.message)
+  } else if (!root.data?.token) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Login token missing')
+  }
+} catch (Throwable ex) {
+  AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Login response parse error: ' + ex.toString())
+}</stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+          </JSR223Assertion>
+          <hashTree />
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extract JWT token" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">TOKEN_MISSING</stringProp>
+            <boolProp name="JSONPostProcessor.compute_concat">false</boolProp>
+          </JSONPostProcessor>
+          <hashTree />
+        </hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="02 Browse available exams" enabled="true">
+          <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+          <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+          <stringProp name="HTTPSampler.protocol">http</stringProp>
+          <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+          <stringProp name="HTTPSampler.path">/api/candidate/exams</stringProp>
+          <stringProp name="HTTPSampler.method">GET</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+          <stringProp name="HTTPSampler.connect_timeout">${__P(connectTimeout,10000)}</stringProp>
+          <stringProp name="HTTPSampler.response_timeout">${__P(responseTimeout,60000)}</stringProp>
+          <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments" />
+          </elementProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Bearer JWT" enabled="true">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="Authorization" elementType="Header">
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${token}</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree />
+          <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert target exam is available" enabled="true">
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="filename" />
+            <stringProp name="parameters" />
+            <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+  def target = vars.get('examId') as Long
+  if (prev.getResponseCode() != '200') {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Browse HTTP ' + prev.getResponseCode())
+  } else if (root.code != 0) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Browse API error: ' + root.message)
+  } else if (!(root.data ?: []).any { (it.id as Long) == target }) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Exam ' + target + ' is not currently available to candidates')
+  }
+} catch (Throwable ex) {
+  AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Browse response parse error: ' + ex.toString())
+}</stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+          </JSR223Assertion>
+          <hashTree />
+        </hashTree>
+        <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Synchronized exam start" enabled="true" />
+        <hashTree>
+          <SyncTimer guiclass="SynchronizingTimerGui" testclass="SyncTimer" testname="Release candidates together before starting" enabled="true">
+            <stringProp name="groupSize">${__P(startGroupSize,100)}</stringProp>
+            <stringProp name="timeoutInMs">${__P(syncTimeout,900000)}</stringProp>
+          </SyncTimer>
+          <hashTree />
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="03 Start exam" enabled="true">
+            <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+            <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/api/candidate/exams/${examId}/start</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.connect_timeout">${__P(connectTimeout,10000)}</stringProp>
+            <stringProp name="HTTPSampler.response_timeout">${__P(responseTimeout,60000)}</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments" />
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Bearer JWT" enabled="true">
+              <collectionProp name="HeaderManager.headers">
+                <elementProp name="Authorization" elementType="Header">
+                  <stringProp name="Header.name">Authorization</stringProp>
+                  <stringProp name="Header.value">Bearer ${token}</stringProp>
+                </elementProp>
+              </collectionProp>
+            </HeaderManager>
+            <hashTree />
+            <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert exam started" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename" />
+              <stringProp name="parameters" />
+              <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+  if (prev.getResponseCode() != '200') {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Start HTTP ' + prev.getResponseCode())
+  } else if (root.code != 0) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Start API error: ' + root.message)
+  } else if (!root.data?.attemptId || !(root.data?.questions?.size() &gt; 0)) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Attempt ID or question snapshot missing')
+  }
+} catch (Throwable ex) {
+  AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Start response parse error: ' + ex.toString())
+}</stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+            </JSR223Assertion>
+            <hashTree />
+            <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Extract attempt and build answer list" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename" />
+              <stringProp name="parameters" />
+              <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+  def d = root?.data
+  def qs = (root?.code == 0 &amp;&amp; d != null) ? (d.questions ?: []) : []
+  vars.put('attemptId', d?.attemptId?.toString() ?: '')
+  vars.put('qCount', qs.size().toString())
+  vars.put('qIndex', '0')
+  qs.eachWithIndex { q, i -&gt;
+    String type = (q.type ?: '').toString()
+    def opts = q.options ?: []
+    String ans
+    if (type in ['SINGLE','JUDGE','MULTIPLE']) {
+      String first = opts ? opts[0].toString() : 'A'
+      int dot = first.indexOf('.')
+      ans = dot &gt; 0 ? first.substring(0, dot).trim() : first.trim()
+    } else if (type == 'FILL') {
+      ans = 'JMeter自动化压测答案'
+    } else {
+      ans = 'JMeter automated subjective test answer.'
+    }
+    vars.put('qid_' + i, q.questionId.toString())
+    vars.put('answer_' + i, ans)
+  }
+} catch (Exception ex) {
+  vars.put('attemptId', '')
+  vars.put('qCount', '0')
+  vars.put('qIndex', '0')
+  log.warn('Unable to parse start-exam response', ex)
+}</stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+            </JSR223PostProcessor>
+            <hashTree />
+          </hashTree>
+        </hashTree>
+        <IfController guiclass="IfControllerPanel" testclass="IfController" testname="Continue only when exam start succeeded" enabled="true">
+          <stringProp name="IfController.condition">${__groovy(vars.get('attemptId') != null &amp;&amp; !vars.get('attemptId').isEmpty())}</stringProp>
+          <boolProp name="IfController.evaluateAll">false</boolProp>
+          <boolProp name="IfController.useExpression">true</boolProp>
+        </IfController>
+        <hashTree>
+          <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Wait for all successful candidates before answering" enabled="true" />
+          <hashTree>
+            <SyncTimer guiclass="SynchronizingTimerGui" testclass="SyncTimer" testname="Synchronize only the answer-phase barrier" enabled="true">
+              <stringProp name="groupSize">0</stringProp>
+              <stringProp name="timeoutInMs">${__P(syncTimeout,900000)}</stringProp>
+            </SyncTimer>
+            <hashTree />
+            <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="00 Barrier - all candidates started" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename" />
+              <stringProp name="parameters" />
+              <stringProp name="script">SampleResult.setResponseCode("200")
+SampleResult.setResponseMessage("All successful candidates reached the answer phase")
+SampleResult.setContentType("text/plain")
+SampleResult.setDataType(org.apache.jmeter.samplers.SampleResult.TEXT)
+SampleResult.setResponseData("Barrier released", "UTF-8")
+SampleResult.setSuccessful(true)</stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+            </JSR223Sampler>
+            <hashTree />
+          </hashTree>
+          <LoopController guiclass="LoopControlPanel" testclass="LoopController" testname="Save every question" enabled="true">
+            <boolProp name="LoopController.continue_forever">false</boolProp>
+            <stringProp name="LoopController.loops">${qCount}</stringProp>
+          </LoopController>
+          <hashTree>
+            <ConstantTimer guiclass="ConstantTimerGui" testclass="ConstantTimer" testname="Think time between answer saves" enabled="true">
+              <stringProp name="ConstantTimer.delay">${__P(answerThinkTimeMs,500)}</stringProp>
+            </ConstantTimer>
+            <hashTree />
+            <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="04 Save answer" enabled="true">
+              <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+              <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+              <stringProp name="HTTPSampler.protocol">http</stringProp>
+              <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+              <stringProp name="HTTPSampler.path">/api/candidate/attempts/${attemptId}/answers</stringProp>
+              <stringProp name="HTTPSampler.method">PUT</stringProp>
+              <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+              <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+              <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+              <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+              <stringProp name="HTTPSampler.connect_timeout">${__P(connectTimeout,10000)}</stringProp>
+              <stringProp name="HTTPSampler.response_timeout">${__P(responseTimeout,60000)}</stringProp>
+              <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+              <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+                <collectionProp name="Arguments.arguments">
+                  <elementProp name="body" elementType="HTTPArgument">
+                    <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                    <stringProp name="Argument.value">${requestBody}</stringProp>
+                    <stringProp name="Argument.metadata">=</stringProp>
+                  </elementProp>
+                </collectionProp>
+              </elementProp>
+            </HTTPSamplerProxy>
+            <hashTree>
+              <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Bearer JWT and JSON" enabled="true">
+                <collectionProp name="HeaderManager.headers">
+                  <elementProp name="Authorization" elementType="Header">
+                    <stringProp name="Header.name">Authorization</stringProp>
+                    <stringProp name="Header.value">Bearer ${token}</stringProp>
+                  </elementProp>
+                  <elementProp name="Content-Type" elementType="Header">
+                    <stringProp name="Header.name">Content-Type</stringProp>
+                    <stringProp name="Header.value">application/json</stringProp>
+                  </elementProp>
+                </collectionProp>
+              </HeaderManager>
+              <hashTree />
+              <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Build answer request for current question" enabled="true">
+                <stringProp name="cacheKey">true</stringProp>
+                <stringProp name="filename" />
+                <stringProp name="parameters" />
+                <stringProp name="script">import groovy.json.JsonOutput
+int i = (vars.get('qIndex') ?: '0') as int
+
+// Stagger only the first answer request for each candidate.
+// All candidates still reach the global barrier together, but their first
+// save-answer requests are spread over a configurable random window.
+if (i == 0) {
+  long maxJitterMs = (props.get('answerStartJitterMs') ?: '30000') as long
+  if (maxJitterMs > 0L) {
+    long delayMs = java.util.concurrent.ThreadLocalRandom.current().nextLong(maxJitterMs + 1L)
+    if (delayMs > 0L) {
+      Thread.sleep(delayMs)
+    }
+  }
+}
+
+String qid = vars.get('qid_' + i)
+String answer = vars.get('answer_' + i) ?: ''
+if (!qid) { throw new IllegalStateException('Question id missing at index ' + i) }
+vars.put('requestBody', JsonOutput.toJson([questionId: (qid as Long), answer: answer, version: 0]))
+vars.put('qIndex', (i + 1).toString())</stringProp>
+                <stringProp name="scriptLanguage">groovy</stringProp>
+              </JSR223PreProcessor>
+              <hashTree />
+              <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert answer saved" enabled="true">
+                <stringProp name="cacheKey">true</stringProp>
+                <stringProp name="filename" />
+                <stringProp name="parameters" />
+                <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  // A connection refusal has a non-numeric JMeter response code and no JSON body.
+  if (!(prev.getResponseCode() ==~ /\d{3}/)) {
+    AssertionResult.setFailure(true)
+    AssertionResult.setFailureMessage('Save answer transport failure: ' + prev.getResponseCode() + ' | ' + prev.getResponseMessage())
+  } else {
+    def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+    if (prev.getResponseCode() != '200') {
+      AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Save answer HTTP ' + prev.getResponseCode())
+    } else if (root.code != 0) {
+      AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Save answer API error: ' + root.message)
+    }
+  }
+} catch (Throwable ex) {
+  AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Save answer response parse error: ' + ex.toString())
+}</stringProp>
+                <stringProp name="scriptLanguage">groovy</stringProp>
+              </JSR223Assertion>
+              <hashTree />
+            </hashTree>
+          </hashTree>
+          <GenericController guiclass="LogicControllerGui" testclass="GenericController" testname="Synchronized exam submission" enabled="true" />
+          <hashTree>
+            <SyncTimer guiclass="SynchronizingTimerGui" testclass="SyncTimer" testname="Release candidates together before submitting" enabled="true">
+              <stringProp name="groupSize">${__P(submitGroupSize,0)}</stringProp>
+              <stringProp name="timeoutInMs">${__P(syncTimeout,900000)}</stringProp>
+            </SyncTimer>
+            <hashTree />
+            <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="05 Submit exam" enabled="true">
+              <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+              <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+              <stringProp name="HTTPSampler.protocol">http</stringProp>
+              <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+              <stringProp name="HTTPSampler.path">/api/candidate/attempts/${attemptId}/submit</stringProp>
+              <stringProp name="HTTPSampler.method">POST</stringProp>
+              <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+              <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+              <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+              <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+              <stringProp name="HTTPSampler.connect_timeout">${__P(connectTimeout,10000)}</stringProp>
+              <stringProp name="HTTPSampler.response_timeout">${__P(responseTimeout,60000)}</stringProp>
+              <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+              <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+                <collectionProp name="Arguments.arguments" />
+              </elementProp>
+            </HTTPSamplerProxy>
+            <hashTree>
+              <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Bearer JWT" enabled="true">
+                <collectionProp name="HeaderManager.headers">
+                  <elementProp name="Authorization" elementType="Header">
+                    <stringProp name="Header.name">Authorization</stringProp>
+                    <stringProp name="Header.value">Bearer ${token}</stringProp>
+                  </elementProp>
+                </collectionProp>
+              </HeaderManager>
+              <hashTree />
+              <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert submit accepted" enabled="true">
+                <stringProp name="cacheKey">true</stringProp>
+                <stringProp name="filename" />
+                <stringProp name="parameters" />
+                <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+  if (prev.getResponseCode() != '200') {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Submit HTTP ' + prev.getResponseCode())
+  } else if (root.code != 0) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Submit API error: ' + root.message)
+  }
+} catch (Throwable ex) {
+  AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Submit response parse error: ' + ex.toString())
+}</stringProp>
+                <stringProp name="scriptLanguage">groovy</stringProp>
+              </JSR223Assertion>
+              <hashTree />
+            </hashTree>
+          </hashTree>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="06 Verify submitted attempt" enabled="true">
+            <stringProp name="HTTPSampler.domain">${__P(host,127.0.0.1)}</stringProp>
+            <stringProp name="HTTPSampler.port">${__P(port,8080)}</stringProp>
+            <stringProp name="HTTPSampler.protocol">http</stringProp>
+            <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+            <stringProp name="HTTPSampler.path">/api/candidate/attempts/${attemptId}</stringProp>
+            <stringProp name="HTTPSampler.method">GET</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+            <boolProp name="HTTPSampler.auto_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.DO_MULTIPART_POST">false</boolProp>
+            <stringProp name="HTTPSampler.connect_timeout">${__P(connectTimeout,10000)}</stringProp>
+            <stringProp name="HTTPSampler.response_timeout">${__P(responseTimeout,60000)}</stringProp>
+            <boolProp name="HTTPSampler.postBodyRaw">false</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments" />
+            </elementProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Bearer JWT" enabled="true">
+              <collectionProp name="HeaderManager.headers">
+                <elementProp name="Authorization" elementType="Header">
+                  <stringProp name="Header.name">Authorization</stringProp>
+                  <stringProp name="Header.value">Bearer ${token}</stringProp>
+                </elementProp>
+              </collectionProp>
+            </HeaderManager>
+            <hashTree />
+            <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Assert attempt status is SUBMITTED" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename" />
+              <stringProp name="parameters" />
+              <stringProp name="script">import groovy.json.JsonSlurper
+try {
+  def root = new JsonSlurper().parseText(prev.getResponseDataAsString())
+  if (prev.getResponseCode() != '200') {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Attempt verify HTTP ' + prev.getResponseCode())
+  } else if (root.code != 0) {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Attempt verify API error: ' + root.message)
+  } else if (root.data?.status != 'SUBMITTED') {
+    AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Attempt status is ' + root.data?.status)
+  }
+} catch (Throwable ex) {
+  AssertionResult.setFailure(true); AssertionResult.setFailureMessage('Attempt verify response parse error: ' + ex.toString())
+}</stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+            </JSR223Assertion>
+            <hashTree />
+          </hashTree>
+        </hashTree>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>

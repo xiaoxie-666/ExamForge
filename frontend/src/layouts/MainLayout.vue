@@ -1,0 +1,5 @@
+<script setup lang="ts">
+import {computed} from 'vue';import {useAuthStore} from '../stores/auth';const auth=useAuthStore();
+const links=computed(()=>auth.user?.role==='STUDENT'?[{to:'/candidate',label:'可参加考试'},{to:'/results',label:'我的成绩'}]:auth.user?.role==='ADMIN'?[{to:'/dashboard',label:'数据总览'},{to:'/questions',label:'题库管理'},{to:'/exams',label:'考试管理'},{to:'/grading',label:'人工阅卷'},{to:'/statistics',label:'成绩统计'},{to:'/users',label:'用户管理'}]:[{to:'/dashboard',label:'数据总览'},{to:'/questions',label:'题库管理'},{to:'/exams',label:'考试管理'},{to:'/grading',label:'人工阅卷'},{to:'/statistics',label:'成绩统计'}]);
+</script>
+<template><div class="shell"><aside class="sidebar"><div class="brand">ExamForge</div><router-link v-for="l in links" :key="l.to" :to="l.to">{{l.label}}</router-link></aside><div class="main-area"><header class="topbar"><span class="brand">在线考试与测评平台</span><div class="user-info"><span>{{auth.user?.displayName}} · {{auth.user?.role}}</span><el-button size="small" @click="auth.logout();$router.push('/login')">退出登录</el-button></div></header><router-view/></div></div></template>

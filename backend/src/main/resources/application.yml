@@ -1,0 +1,77 @@
+server:
+  port: ${SERVER_PORT:8080}
+spring:
+  application:
+    name: examforge
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/examforge?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:examforge}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:30}
+      minimum-idle: 5
+      connection-timeout: 30000
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      database: 0
+      timeout: 3000ms
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+rocketmq:
+  name-server: ${ROCKETMQ_NAME_SERVER:localhost:9876}
+  producer:
+    group: examforge-producer
+    send-message-timeout: 5000
+    retry-times-when-send-failed: 2
+examforge:
+  loadtest:
+    enabled: ${LOADTEST_USERS_ENABLED:false}
+    account-start: ${LOADTEST_USER_START:1001}
+    account-count: ${LOADTEST_USER_COUNT:1000}
+    password: ${LOADTEST_USER_PASSWORD}
+  jwt:
+    secret: ${JWT_SECRET}
+    expire-hours: 12
+  rocketmq:
+    topic: examforge-events
+    consumer-group: examforge-event-consumer
+  outbox:
+    batch-size: 50
+xxl:
+  job:
+    admin:
+      addresses: ${XXL_JOB_ADMIN:http://localhost:8088/xxl-job-admin}
+    accessToken: ${XXL_JOB_TOKEN}
+    executor:
+      appname: examforge-executor
+      address: ''
+      ip: ${XXL_JOB_EXECUTOR_IP:}
+      port: ${XXL_JOB_EXECUTOR_PORT:9998}
+      logpath: ./logs/xxl-job
+      logretentiondays: 30
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
